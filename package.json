@@ -1,14 +1,14 @@
 {
-  "name": "react-native-arkit",
+  "name": "@getapper/react-native-arkit",
   "repository": {
     "type": "git",
-    "url": "https://github.com/HippoAR/react-native-arkit.git"
+    "url": "https://github.com/getapper/react-native-arkit.git"
   },
   "version": "0.9.0",
   "description": "React Native binding for iOS ARKit",
-  "author": "Zehao Li <qft.gtr@gmail.com>",
+  "author": "getapper <antonio.giordano@getapper.com>",
   "license": "MIT",
-  "homepage": "https://github.com/HippoAR/react-native-arkit",
+  "homepage": "https://github.com/getapper/react-native-arkit",
   "keywords": ["react-native", "react", "native", "ARKit", "AR"],
   "main": "index.js",
   "scripts": {
