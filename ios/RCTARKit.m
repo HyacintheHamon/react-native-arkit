@@ -77,6 +77,12 @@ static RCTARKit *instance = nil;
         tapGestureRecognizer.numberOfTapsRequired = 1;
         [self.arView addGestureRecognizer:tapGestureRecognizer];
         
+        UIRotationGestureRecognizer *rotationGestureRecognizer = [[UIRotationGestureRecognizer alloc] initWithTarget:self action:@selector(handleRotationFrom:)];
+        [self.arView addGestureRecognizer:rotationGestureRecognizer];
+
+        UIPinchGestureRecognizer *pinchGestureRecognizer = [[UIPinchGestureRecognizer alloc] initWithTarget:self action:@selector(handlePinchFrom:)];
+        [self.arView addGestureRecognizer:pinchGestureRecognizer];
+
         self.touchDelegates = [NSMutableArray array];
         self.rendererDelegates = [NSMutableArray array];
         self.sessionDelegates = [NSMutableArray array];
@@ -302,20 +308,35 @@ static RCTARKit *instance = nil;
 
 #if __IPHONE_OS_VERSION_MAX_ALLOWED >= 110300
 - (void)setDetectionImages:(NSArray*) detectionImages {
-    
-    if (@available(iOS 11.3, *)) {
-        ARWorldTrackingConfiguration *configuration = self.configuration;
-        NSSet *detectionImagesSet = [[NSSet alloc] init];
-        for (id config in detectionImages) {
-            if(config[@"resourceGroupName"]) {
-                // TODO: allow bundle to be defined
-                detectionImagesSet = [detectionImagesSet setByAddingObjectsFromSet:[ARReferenceImage referenceImagesInGroupNamed:config[@"resourceGroupName"] bundle:nil]];
-            }
+        if (@available(iOS 11.3, *)) {
+            ARWorldTrackingConfiguration *configuration = self.configuration;
+            NSSet *detectionImagesSet = [[NSSet alloc] init];
+            for (id config in detectionImages) {
+
+                for (id url in config[@"arDetectionImages"]) {
+                    NSData * imageData = [[NSData alloc] initWithContentsOfURL: [NSURL URLWithString: url]];
+
+                    UIImage* uiimage = [[UIImage alloc] initWithData:imageData];
+
+                    CGImageRef cgImage = [uiimage CGImage];
+
+                    ARReferenceImage *image = [[ARReferenceImage alloc] initWithCGImage:cgImage orientation:kCGImagePropertyOrientationUp physicalWidth:1];
+                    image.name=url;
+                    detectionImagesSet = [detectionImagesSet setByAddingObject:image];
+
+                }
+            
+
+                if(config[@"resourceGroupName"]) {
+                    detectionImagesSet = [detectionImagesSet setByAddingObjectsFromSet:[ARReferenceImage referenceImagesInGroupNamed:config[@"resourceGroupName"] bundle:nil]];
+                }
+            
+            configuration.detectionImages = detectionImagesSet;
+            [self resume];
         }
-        configuration.detectionImages = detectionImagesSet;
-        [self resume];;
     }
 }
+
 #endif
 - (NSDictionary *)readCameraPosition {
     // deprecated
@@ -394,9 +415,6 @@ static NSDictionary * vector4ToJson(const SCNVector4 v) {
     return [self cropImage:image toSelection:selection];
     
 }
-
-
-
 
 
 - (UIImage *)getSnapshotCamera:(NSDictionary *)selection {
@@ -539,14 +557,55 @@ static NSDictionary * getPlaneHitResult(NSMutableArray *resultsMapped, const CGP
     //
     if(self.onTapOnPlaneUsingExtent) {
         // Take the screen space tap coordinates and pass them to the hitTest method on the ARSCNView instance
-        NSDictionary * planeHitResult = [self getPlaneHitResult:tapPoint types:ARHitTestResultTypeExistingPlaneUsingExtent];
-        self.onTapOnPlaneUsingExtent(planeHitResult);
+        // NSDictionary * planeHitResult = [self getPlaneHitResult:tapPoint types:ARHitTestResultTypeExistingPlaneUsingExtent];
+        // CGPoint point = CGPointMake(  [pointDict[@"x"] floatValue], [pointDict[@"y"] floatValue] );
+                NSDictionary *tap = @{
+                    @"x": @(tapPoint.x),
+                    @"y": @(tapPoint.y)
+                };
+
+        self.onTapOnPlaneUsingExtent(tap);
     }
     
     if(self.onTapOnPlaneNoExtent) {
         // Take the screen space tap coordinates    and pass them to the hitTest method on the ARSCNView instance
         NSDictionary * planeHitResult = [self getPlaneHitResult:tapPoint types:ARHitTestResultTypeExistingPlane];
         self.onTapOnPlaneNoExtent(planeHitResult);
+    }
+}
+
+- (void)handleRotationFrom: (UIRotationGestureRecognizer *)recognizer {
+    
+    if( recognizer.state == UIGestureRecognizerStateBegan || 
+        recognizer.state == UIGestureRecognizerStateChanged || 
+        recognizer.state == UIGestureRecognizerStateEnded) {
+
+        if(self.onRotationGesture) {
+            NSDictionary *rotationGesture = @{
+                    @"rotation": @(recognizer.rotation),
+                    @"velocity": @(recognizer.velocity)
+                    };
+
+            self.onRotationGesture(rotationGesture);
+        }
+    }
+}
+
+
+- (void)handlePinchFrom: (UIPinchGestureRecognizer *)recognizer {
+    
+    if( recognizer.state == UIGestureRecognizerStateBegan || 
+        recognizer.state == UIGestureRecognizerStateChanged || 
+        recognizer.state == UIGestureRecognizerStateEnded) {
+
+        if(self.onPinchGesture) {
+            NSDictionary *pinchGesture = @{
+                    @"scale": @(recognizer.scale),
+                    @"velocity": @(recognizer.velocity)
+                    };
+
+            self.onPinchGesture(pinchGesture);
+        }
     }
 }
 
